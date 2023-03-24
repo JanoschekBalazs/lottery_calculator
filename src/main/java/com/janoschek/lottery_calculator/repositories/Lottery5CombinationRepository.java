@@ -1,12 +1,10 @@
 package com.janoschek.lottery_calculator.repositories;
 
-import com.janoschek.lottery_calculator.models.lottery5.Lottery5Ticket;
+import com.janoschek.lottery_calculator.models.lottery5.Lottery5Combination;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import java.util.List;
+public interface Lottery5CombinationRepository extends MongoRepository<Lottery5Combination, String> {
 
-public interface Lottery5CombinationRepository extends MongoRepository<Lottery5Ticket, String> {
-
-    Lottery5Ticket findByNumbers(List<Integer> numbers);
+    Lottery5Combination findByNumbers(int[] numbers);
 
 }

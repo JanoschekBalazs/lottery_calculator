@@ -1,39 +1,45 @@
 package com.janoschek.lottery_calculator.services.combinations;
 
-import com.janoschek.lottery_calculator.models.lottery5.Lottery5Ticket;
+import com.janoschek.lottery_calculator.models.lottery5.Lottery5Combination;
 import com.janoschek.lottery_calculator.repositories.Lottery5CombinationRepository;
+import org.paukov.combinatorics3.Generator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @Service
-public class Lottery5CombinationGeneratorService implements LotteryCombinationsGeneratorService {
-
-    private static final Lottery5Rules rules = Lottery5Rules.get();
+public class Lottery5CombinationGeneratorService {
+    private static final Logger LOG = LoggerFactory.getLogger(Lottery5CombinationGeneratorService.class);
     private static final int BULK_SIZE = 200000;
-    private static final List<Lottery5Ticket> tickets = new ArrayList<>(BULK_SIZE);
+    private static final Stream<Lottery5Combination> combinationStream = Generator
+            .combination(IntStream.rangeClosed(1, Lottery5Combination.POOL_SIZE).boxed().collect(Collectors.toList()))
+            .simple(Lottery5Combination.SIZE)
+            .stream()
+            .map(Lottery5Combination::new);
+
     @Autowired
     private Lottery5CombinationRepository repository;
 
-    @Override
     public void generate() {
-        rules.getCombinationStream().forEach(combination -> tickets.add(new Lottery5Ticket(combination)));
-        List<Lottery5Ticket> bulk = new ArrayList<>(BULK_SIZE);
-        for (int i = 0; i < tickets.size(); i++) {
-            bulk.add(tickets.get(i));
-            if (i != 0 && i % BULK_SIZE == 0) {
-                synchronizedSave(bulk);
-                bulk.clear();
+        var it = combinationStream.iterator();
+        var batch = new ArrayList<Lottery5Combination>(BULK_SIZE);
+        var counter = 0;
+        while(it.hasNext()) {
+            counter++;
+            batch.add(it.next());
+            if (batch.size() % BULK_SIZE == 0) {
+                repository.saveAll(batch);
+                batch.clear();
+                LOG.info("Saved " + counter + " item");
             }
         }
-        synchronizedSave(bulk);
-    }
-
-    private void synchronizedSave(List<Lottery5Ticket> items) {
-        synchronized (repository) {
-            repository.saveAll(items);
-        }
+        repository.saveAll(batch);
+        batch.clear();
     }
 }
